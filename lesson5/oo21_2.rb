@@ -45,53 +45,41 @@ module Displayable
 
   def welcome_message
     clear_screen
-    answer = nil
     puts "Welcome to Twenty-One! Please enter your name:"
-    loop do
-      answer = gets.chomp
-      break if !Dealer::COMPUTER_NAMES.include?(answer)
-      "Please enter a different name."
-    end
+    answer = gets.chomp
     puts "Hi, #{answer}! Press enter to deal cards."
     gets.chomp
-    player.name = answer 
+    player.name = answer
   end
 
   def show_cards
-    puts "#{player.name}'s cards: #{player.hand.card_names}"
+    puts "#{name}'s cards: #{hand.card_names}"
     puts ""
-    puts "#{dealer.name}'s cards: #{dealer.hand.card_names.split(',')[0]}, (second card hidden)"
   end
 
-  def show_flop
-    puts "#{player.name}'s cards: #{player.hand.card_names}"
-    puts ""
-    puts "#{dealer.name}'s cards: #{dealer.hand.card_names}"
+  def show_one_card
+    puts "#{name}'s cards: #{hand.card_names.split(',')[0]}, (second card hidden)"
   end
 
-  def declare_winner
-    if player.hand.busted?
-      puts "#{player.name} busts, #{dealer.name} wins!"
-    elsif dealer.hand.busted?
-      puts "#{dealer.name} busts, #{player.name} wins!"
-    elsif player.hand > dealer.hand
-      puts "#{player.name} wins!"
-    elsif dealer.hand > player.hand
-      puts "#{dealer.name} wins!"
-    else puts "Push!"
+  def detect_win(other)
+    puts ""
+    if hand.busted?
+      puts "#{name} busts! #{other.name} wins!"
+    elsif hand > other.hand
+      puts "#{name} wins!"
     end
   end
 
+  def detect_tie
+    puts "Push!" if player.hand.calculate_total == dealer.hand.calculate_total
+  end
+
   def show_results
-    clear_screen
     puts ""
-    puts "#{show_flop}"
+    puts "#{show_cards}"
     puts ""
-    puts "#{player.name}'s total: #{player.hand.calculate_total}"
+    puts "#{name}'s total: #{hand.calculate_total}"
     puts ""
-    puts "#{dealer.name}'s total: #{dealer.hand.calculate_total}"
-    puts ""
-    declare_winner
   end
 
   def play_again?
@@ -112,7 +100,7 @@ module Displayable
   end
 end
 
-class Game
+class Oo21
   include Displayable
   attr_accessor :deck, :discards, :player, :dealer
 
@@ -128,8 +116,18 @@ class Game
     welcome_message
     loop do
       deal_initial_cards
+      player.show_cards
+      dealer.show_one_card
+      if player.hand.win? || dealer.hand.win?
+        player.detect_win(dealer)
+        dealer.detect_win(player)
+        detect_tie
+        play_again? ? reset : break
+      end
       [player, dealer].each { |participant| participant.take_turn(deck) }
-      show_results
+      player.detect_win(dealer)
+      dealer.detect_win(player)
+      detect_tie
       play_again? ? reset : break
     end
     goodbye_message
@@ -140,46 +138,8 @@ class Game
       player.hand.hand << deck.deal_card
       dealer.hand.hand << deck.deal_card
     end
-    clear_screen
-    show_cards
   end
 
-  def hit_or_stay
-    answer = nil
-    puts ""
-    puts "Would you like to hit or stay? h/s"
-    loop do
-      answer = gets.chomp.downcase
-      break if %w(h s hit stay).include?(answer)
-      puts "Please enter h (hit) or s (stay)"
-    end
-    player.hand.hand << deck.deal_card if %w(h hit).include?(answer)
-    answer
-  end
-
-  def player_turn
-    loop do
-      break if player.hand.busted? || player.hand.win?
-      break if %w(s stay).include?(hit_or_stay)
-      clear_screen
-      show_cards
-    end
-  end
-
-  def player_turn_ends?
-    player.hand.busted? || player.hand.win?
-  end
-
-  def dealer_turn
-    loop do
-      break if dealer.hand.busted? || dealer.hand.win? || dealer.hand.stay?
-      dealer.hand.hand << deck.deal_card
-    end
-  end
-
-  def dealer_turn_ends?
-    dealer.hand.busted? || dealer.hand.win? || dealer.hand.stay?
-  end
 
   def shuffle_shoe
     deck.cards += discards
@@ -297,6 +257,7 @@ class Participant
 end
 
 class Player < Participant
+  include Displayable
   attr_accessor :name
 
   def initialize
@@ -308,9 +269,11 @@ class Player < Participant
     loop do
       break if turn_ends?
       break if %w(s stay).include?(hit_or_stay(deck))
-      system 'clear'
-      
+      clear_screen
+      show_cards
     end
+    clear_screen
+    show_results
   end
 
   def hit_or_stay(deck)
@@ -335,6 +298,7 @@ end
 class Dealer < Participant
   COMPUTER_NAMES = ['R2D2', 'Hal', 'Number 5',
                     'Joshua', 'JARVIS', 'Colossus']
+  include Displayable                    
   attr_accessor :name
 
   def initialize
@@ -347,6 +311,8 @@ class Dealer < Participant
       break if turn_ends?
       hand.hand << deck.deal_card
     end
+    clear_screen
+    show_results
   end
 
   def turn_ends?
@@ -354,5 +320,5 @@ class Dealer < Participant
   end
 end
 
-game = Game.new
+game = Oo21.new
 game.start
