@@ -11,14 +11,24 @@ turn: Dealer hits until cards total at least 17. If dealer busts, player
 wins. Whoever has the highest score wins.
 
 Twenty_one
-  has player(has name, hand(has cards[], value)),
-  dealer(has name, hand(has cards[], value)),
-  deck(has cards[](has name, value))
+  has player
+    has name
+        hand
+          has cards[]
+              value
+  dealer
+    has name
+        hand
+          has cards[]
+              value
+  deck
+    has cards[]
+      has name
+          value))
 
   start
     welcome
-    loop do
-      deck.shuffle
+    loop do                                                                 
       deal
       player_turn
       dealer_turn
@@ -29,21 +39,30 @@ Twenty_one
   end
 
 Deck
-  has cards[](have name, value)
+  has cards[]
+      has name
+          value
   shuffle
 
 Card
-  has name, value
+  has name
+      value
 
 Hand
-  has cards[](have name, value), value
+  has value
+      cards[]
+        has name
+            value
 
 Participant
-  has name, hand(has cards, value)
+  has name
+      hand
+        has cards
+            value
 
-Player < Participant
+Player is a Participant
 
-Dealer < Participant
+Dealer is a Participant
 =end
 
 module Displayable
